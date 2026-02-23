@@ -11,6 +11,7 @@ import os
 import re
 from pathlib import Path
 from typing import Dict, Optional, Tuple
+import streamlit as st
 
 class VideoConverter:
     """Main class for video conversion operations"""
@@ -81,7 +82,8 @@ class VideoConverter:
                      preset: str = 'medium',
                      resolution: Optional[Tuple[int, int]] = None,
                      video_bitrate: Optional[str] = None,
-                     audio_bitrate: Optional[str] = None) -> Dict:
+                     audio_bitrate: Optional[str] = None,
+                     progress_bar: Optional[st.progress] = None) -> Dict:
         """
         Convert video to specified format and settings
         
@@ -155,7 +157,7 @@ class VideoConverter:
             stream = ffmpeg.output(*output_streams, str(output_path), **output_options)
             cmd = ffmpeg.compile(stream, overwrite_output=True)
             
-            # Run with progress bar
+            
             duration = input_info['duration']
             process = subprocess.Popen(
                 cmd,
@@ -164,8 +166,22 @@ class VideoConverter:
                 universal_newlines=True
             )
             
-            # Progress bar
+            # Read output in real-time to show progress in Streamlit
+            while True:
+                output = process.stderr.readline()
+                if output == '' and process.poll() is not None:
+                    break
+                if output:
+                    # Parse progress information from ffmpeg output
+                    time_match = re.search(r'time=(\d+:\d+:\d+\.\d+)', output)
+                    if time_match and progress_bar is not None:
+                        elapsed_time_str = time_match.group(1)
+                        h, m, s = map(float, elapsed_time_str.split(':'))
+                        elapsed_seconds = h * 3600 + m * 60 + s
+                        progress_percent = min(int((elapsed_seconds / duration) * 100), 100)
+                        progress_bar.progress(progress_percent)
             
+
             process.wait()
             if process.returncode != 0:
                 raise Exception("FFmpeg conversion failed")

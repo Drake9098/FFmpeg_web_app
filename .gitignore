@@ -1,6 +1,10 @@
 # Virtual Environment
 .venv/*
 
+# Streamlit cache
+input
+output
+
 # Python cache
 __pycache__
 src/__pycache__
