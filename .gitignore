@@ -1,5 +1,9 @@
 # Virtual Environment
-.venv/*
+.venv
+
+# Streamlit cache
+input
+output
 
 # Python cache
 __pycache__
