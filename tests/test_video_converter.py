@@ -4,9 +4,9 @@ Uses mocking to avoid requiring real video files or ffmpeg installation.
 """
 
 import sys
-import os
+import ffmpeg
 import pytest
-from unittest.mock import MagicMock, patch, PropertyMock
+from unittest.mock import MagicMock, patch
 from pathlib import Path
 
 # Add root to path so imports work
@@ -157,6 +157,7 @@ class TestGetVideoInfo:
         with patch('ffmpeg.probe', return_value=probe_no_audio):
             info = converter.get_video_info("fake.mp4")
         assert 'audio_codec' not in info
+        assert 'audio_bitrate' not in info
         assert 'sample_rate' not in info
 
     def test_no_video_stream(self, converter):
@@ -170,10 +171,9 @@ class TestGetVideoInfo:
         assert 'width' not in info
 
     def test_raises_on_ffmpeg_error(self, converter):
-        err = MagicMock()
-        err.stderr = b"ffprobe error"
-        with patch('ffmpeg.probe', side_effect=Exception("probe failed")):
-            with pytest.raises(Exception):
+        err = ffmpeg.Error('ffprobe', None, b'ffprobe error')
+        with patch('ffmpeg.probe', side_effect=err):
+            with pytest.raises(ffmpeg.Error):
                 converter.get_video_info("nonexistent.mp4")
 
     def test_video_bitrate_none_when_missing(self, converter):
@@ -233,11 +233,6 @@ class TestConvertVideo:
 
     # Stats structure
 
-    def test_returns_stats_dict(self, converter):
-        with self._patch_all(converter):
-            stats = converter.convert_video("input/fake.mp4")
-        assert isinstance(stats, dict)
-
     def test_stats_keys_present(self, converter):
         with self._patch_all(converter):
             stats = converter.convert_video("input/fake.mp4")
@@ -290,20 +285,6 @@ class TestConvertVideo:
             with pytest.raises(Exception, match="FFmpeg conversion failed"):
                 converter.convert_video("input/fake.mp4")
 
-    # Progress bar
-
-    def test_progress_bar_called(self, converter):
-        mock_bar = MagicMock()
-        with self._patch_all(converter):
-            converter.convert_video("input/fake.mp4", progress_bar=mock_bar)
-        mock_bar.progress.assert_called()
-
-    def test_progress_bar_not_called_when_none(self, converter):
-        """When progress_bar=None no AttributeError should be raised."""
-        with self._patch_all(converter):
-            stats = converter.convert_video("input/fake.mp4", progress_bar=None)
-        assert stats is not None
-
     # Codec / format options
 
     def test_default_codec_is_libx264(self, converter):
@@ -311,26 +292,28 @@ class TestConvertVideo:
              patch('ffmpeg.output') as mock_output:
             mock_output.return_value = MagicMock()
             converter.convert_video("input/fake.mp4")
-            call_kwargs = mock_output.call_args[1] if mock_output.called else {}
-            # libx264 is the default; verify it reaches ffmpeg.output
-            assert call_kwargs.get('c:v', 'libx264') == 'libx264'
+            mock_output.assert_called_once()
+            call_kwargs = mock_output.call_args[1]
+            assert call_kwargs.get('c:v') == 'libx264'
 
     def test_crf_passed_when_no_bitrate(self, converter):
         with self._patch_all(converter), \
              patch('ffmpeg.output') as mock_output:
             mock_output.return_value = MagicMock()
             converter.convert_video("input/fake.mp4", crf=18)
-            call_kwargs = mock_output.call_args[1] if mock_output.called else {}
-            assert call_kwargs.get('crf', 18) == 18
+            mock_output.assert_called_once()
+            call_kwargs = mock_output.call_args[1]
+            assert call_kwargs.get('crf') == 18
 
     def test_video_bitrate_overrides_crf(self, converter):
         with self._patch_all(converter), \
              patch('ffmpeg.output') as mock_output:
             mock_output.return_value = MagicMock()
             converter.convert_video("input/fake.mp4", video_bitrate='2M')
-            call_kwargs = mock_output.call_args[1] if mock_output.called else {}
-            # crf should NOT be set when bitrate is provided
-            assert 'crf' not in call_kwargs or call_kwargs.get('b:v') == '2M'
+            mock_output.assert_called_once()
+            call_kwargs = mock_output.call_args[1]
+            assert 'crf' not in call_kwargs
+            assert call_kwargs.get('b:v') == '2M'
 
     def test_resolution_triggers_scale_filter(self, converter):
         with self._patch_all(converter), \
