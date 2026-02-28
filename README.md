@@ -6,19 +6,18 @@
 
 A Streamlit web app that wraps the FFmpeg Python library, and provides feedback on space saved, and output video quality.
 
-## Planned Features
-- 🟪 Convert video to different formats
-- 🟪 Analyze original video properties (resolution, bitrate, fps, codecs, etc.)
-- 🟪 Provide options for output settings (resolution, bitrate, codec, CRF, preset)
-- 🟪 Provide feedback of space saved and output video quality (SSIM and PSNR)
-- 🟪Streamlit GUI
+## Current Features
+- ☑️ Convert video to different formats
+- ☑️ Analyze original video properties (resolution, bitrate, fps, codecs, etc.)
+- ☑️ Provide options for output settings (resolution, bitrate, codec, CRF, preset)
+- ☑️ Provide feedback of space saved and output video quality (SSIM and PSNR)
+- ☑️ Streamlit GUI
 
 ### Video Codecs
 - `libx264` - H.264 (default, widely compatible)
 - `libx265` - H.265/HEVC (better compression, slower)
 - `libvpx-vp9` - VP9 (for WebM)
 - `libaom-av1` - AV1 (best compression, slowest)
-- `libvvc` - H.266/VVC (next-gen codec, best compression, very slow)
 
 ### Audio Codecs
 - `aac` - AAC (default)
