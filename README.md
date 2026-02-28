@@ -3,6 +3,7 @@
 ![Python](https://img.shields.io/badge/Python-3.x-blue.svg)
 ![FFmpeg](https://img.shields.io/badge/FFmpeg-v7.0-blue?logo=ffmpeg&logoColor=white)
 ![StreamLit](https://img.shields.io/badge/-Streamlit-blue?style=flat&logo=streamlit&logoColor=white)
+![Coverage](https://img.shields.io/badge/Coverage-93%25-blue)
 
 A Streamlit web app that wraps the FFmpeg Python library, and provides feedback on space saved, and output video quality.
 
