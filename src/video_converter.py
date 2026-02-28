@@ -224,7 +224,7 @@ class VideoConverter:
             print(f"Compression ratio: {stats['compression_ratio']}x")
             print(f"{'='*60}\n")
 
-            if "ssim" in stats is not None:
+            if 'ssim_mean' in stats:
                 print(f"SSIM: {stats['ssim_mean']:.4f} (Quality: {stats['quality_assessment']})")
                 print(f"PSNR: {stats['psnr_mean']:.2f} dB (Higher is better)")
                 print(f"{'='*60}\n")
