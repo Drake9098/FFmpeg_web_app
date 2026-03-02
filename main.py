@@ -3,6 +3,7 @@ import json
 import streamlit as st
 
 from src.video_converter import VideoConverter
+from src.quality_analyzer import VideoQualityAnalyzer
 
 # Page config
 st.set_page_config(
@@ -31,7 +32,7 @@ if uploaded_file:
     with open(input_path, "wb") as f:
         f.write(uploaded_file.read())
 
-    ### Show video info
+    # Show video info
 
     with st.expander("📊 Info Video", expanded=True):
         try:
@@ -54,7 +55,14 @@ if uploaded_file:
 
     # Conversion settings
     st.subheader("⚙️ Impostazioni")
-    
+
+    st.info(
+        "ℹ️ **Nota:** Non tutte le combinazioni di formato, codec video e codec audio sono compatibili tra loro. "
+        "Scegliere parametri incompatibili (es. H.264 in WebM, o AAC in MKV con VP9) può causare errori di conversione. "
+        "Si consiglia di usare combinazioni note: \n\n"
+        "**MP4 → H.264/AAC**, **WebM → VP9/Opus**, **MKV → H.265/AAC**."
+    )
+
     col1, col2 = st.columns(2)
 
     with col1:
@@ -132,15 +140,25 @@ if uploaded_file:
             index=5
         )
     
-    analyze_quality = st.checkbox("Analizza la qualità della conversione")
-    save_stats = st.checkbox("Salva l'analisi e le metriche dettagliate in JSON")
+    save_stats = None
+
+    if codec != "vp9" and codec != "av1":
+        analyze_quality = st.checkbox("Analizza la qualità della conversione")
+        save_stats = st.checkbox("Salva l'analisi e le metriche dettagliate in JSON")
+    else:
+        st.info("ℹ️ L'analisi della qualità non è disponibile per i codec VP9 e AV1 a causa di limitazioni tecniche di OpenCV.")
+        analyze_quality = False
+    
     
     # If saving stats, we need to analyze quality to get the metrics
-    if save_stats and not analyze_quality: 
+    if save_stats is not None and not analyze_quality: 
         analyze_quality = True
 
     # Convert button
     if st.button("Converti Video", type="primary", use_container_width=True):
+        # Reset previous results
+        st.session_state.conversion_result = None
+        
         # Codec mapping
         codec_mapping = {
             'h264': 'libx264',
@@ -149,7 +167,15 @@ if uploaded_file:
             'av1': 'libaom-av1'
         }
         
+        audio_codec_mapping = {
+            'aac': 'aac',
+            'mp3': 'libmp3lame',
+            'opus': 'libopus',
+            'vorbis': 'libvorbis'
+        }
+        
         video_codec = codec_mapping.get(codec, codec)
+        audio_codec = audio_codec_mapping.get(audio_codec, audio_codec)
         
         # Prepare resolution tuple
         if width != "Originale" and height != "Originale":
@@ -181,71 +207,90 @@ if uploaded_file:
             
             # Quality analysis if requested
             if analyze_quality:
-                ### Implement quality analysis
-                pass
+                status_text.text("Analisi qualità...")
+                analyzer = VideoQualityAnalyzer()
+                quality_results = analyzer.compare_videos(
+                    str(input_path),
+                    str(output_path)
+                )
+                stats['quality_metrics'] = quality_results
             
             progress_bar.progress(100)
             status_text.text("✓ Completato!")
-            
-            # Show results
-            st.success("Conversione completata con successo!")
-            
-            col1, col2, col3 = st.columns(3)
-            
-            with col1:
-                st.metric(
-                    "Dimensione Originale",
-                    f"{stats['input_size_mb']:.1f} MB"
-                )
-            
-            with col2:
-                st.metric(
-                    "Dimensione Finale",
-                    f"{stats['output_size_mb']:.1f} MB"
-                )
-            
-            with col3:
-                st.metric(
-                    "Riduzione",
-                    f"{stats['compression_ratio']:.1%}"
-                )
-            
-            # Quality metrics
-            if analyze_quality and 'quality_metrics' in stats:
-                ### Implement display of quality metrics
-                pass
 
-            #Save stats to JSON
+            # Save stats to JSON
+            stats_path = None
             if save_stats and 'quality_metrics' in stats:
                 stats_path = output_path.with_suffix('.json')
                 with open(stats_path, "w") as f:
                     json.dump(stats, f, indent=4)
-
-            # Download Video Button
-            with open(output_path, "rb") as file:
-                st.download_button(
-                    label="📼 Scarica Video",
-                    data=file,
-                    file_name=stats['output_file'],
-                    mime=f"video/{output_format}",
-                    use_container_width=True
-                )
-
-            # Download JSON Button
-            if save_stats and 'quality_metrics' in stats:
-                with open(stats_path, "rb") as file:
-                    st.download_button(
-                        label="📄 Scarica JSON",
-                        data=file,
-                        file_name=stats_path.name,
-                        mime="application/json",
-                        use_container_width=True
-                    )
+            
+            # Persist results in session state
+            st.session_state.conversion_result = {
+                'stats': stats,
+                'output_path': str(output_path),
+                'stats_path': str(stats_path) if stats_path else None,
+                'output_format': output_format,
+                'analyze_quality': analyze_quality,
+                'save_stats': save_stats,
+            }
         
         except Exception as e:
             st.error(f"Errore durante la conversione: {e}")
             progress_bar.empty()
             status_text.empty()
+
+    # Show results from session state (persists across reruns caused by download buttons)
+    if st.session_state.get('conversion_result'):
+        r = st.session_state.conversion_result
+        stats = r['stats']
+        output_path = Path(r['output_path'])
+        stats_path = Path(r['stats_path']) if r['stats_path'] else None
+        
+        st.success("Conversione completata con successo!")
+        
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.metric("Dimensione Originale", f"{stats['input_size_mb']:.1f} MB")
+        with col2:
+            st.metric("Dimensione Finale", f"{stats['output_size_mb']:.1f} MB")
+        with col3:
+            st.metric("Riduzione", f"{stats['compression_ratio']:.1%}")
+        
+        # Quality metrics
+        if r['analyze_quality'] and 'quality_metrics' in stats:
+            st.subheader("📈 Metriche Qualità")
+            qm = stats['quality_metrics']
+            col1, col2 = st.columns(2)
+            with col1:
+                st.metric("PSNR", f"{qm['psnr_mean']:.2f} dB")
+                st.metric("PSNR Min", f"{qm['psnr_min']:.2f} dB")
+                st.metric("PSNR Max", f"{qm['psnr_max']:.2f} dB")
+            with col2:
+                st.metric("SSIM", f"{qm['ssim_mean']:.4f}")
+                st.metric("SSIM Min", f"{qm['ssim_min']:.4f}")
+                st.metric("SSIM Max", f"{qm['ssim_max']:.4f}")
+
+        # Download Video Button
+        with open(output_path, "rb") as file:
+            st.download_button(
+                label="📼 Scarica Video",
+                data=file,
+                file_name=stats['output_file'],
+                mime=f"video/{r['output_format']}",
+                use_container_width=True
+            )
+
+        # Download JSON Button
+        if r['save_stats'] and stats_path and stats_path.exists():
+            with open(stats_path, "rb") as file:
+                st.download_button(
+                    label="📄 Scarica JSON",
+                    data=file,
+                    file_name=stats_path.name,
+                    mime="application/json",
+                    use_container_width=True
+                )
 else:
     st.info("Carica un video per iniziare")
 
