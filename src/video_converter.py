@@ -167,11 +167,13 @@ class VideoConverter:
             )
             
             # Read output in real-time to show progress in Streamlit
+            stderr_lines = []
             while True:
                 output = process.stderr.readline()
                 if output == '' and process.poll() is not None:
                     break
                 if output:
+                    stderr_lines.append(output)
                     # Parse progress information from ffmpeg output
                     time_match = re.search(r'time=(\d+:\d+:\d+\.\d+)', output)
                     if time_match and progress_bar is not None:
@@ -180,11 +182,11 @@ class VideoConverter:
                         elapsed_seconds = h * 3600 + m * 60 + s
                         progress_percent = min(int((elapsed_seconds / duration) * 100), 100)
                         progress_bar.progress(progress_percent)
-            
 
             process.wait()
             if process.returncode != 0:
-                raise Exception("FFmpeg conversion failed")
+                error_output = ''.join(stderr_lines[-20:])  # last 20 lines of FFmpeg output
+                raise Exception(f"FFmpeg conversion failed (exit code {process.returncode}):\n{error_output}")
                         
             end_time = time.time()
             execution_time = end_time - start_time
