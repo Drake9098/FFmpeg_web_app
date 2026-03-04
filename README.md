@@ -14,6 +14,9 @@ A Streamlit web app that wraps the FFmpeg Python library, and provides feedback 
 - ☑️ Streamlit GUI
 
 ### Usage
+The app is deployed at https://ffmpeg-converter.streamlit.app/
+
+Alternatively, follow these steps:
 1. Clone the repository: `git clone https://github.com/Drake9098/FFmpeg_web_app.git`
 2. Install dependencies:
    - Via pyproject.toml (recommended): `pip install .`
