@@ -135,18 +135,36 @@ class VideoQualityAnalyzer:
             print(f"  Frame {i+1}/{total}: PSNR={psnr:.2f} dB, SSIM={ssim_val:.4f}")
         return psnr_values, ssim_values
 
+    @staticmethod
+    def _safe_round(val: float, digits: int) -> float:
+        """Round val; return val unchanged when it is not finite (inf / nan)."""
+        v = float(val)
+        return v if not np.isfinite(v) else round(v, digits)
+
     def _build_statistics(self, psnr_values: list, ssim_values: list) -> Dict:
         """Aggregate per-frame metric lists into a statistics dictionary."""
+        psnr_arr = np.array(psnr_values, dtype=float)
+        ssim_arr = np.array(ssim_values, dtype=float)
+
+        # std of a list that contains inf → inf-inf = nan (RuntimeWarning).
+        # fall back to the std of only the finite subset; if none are finite, use 0.0.
+        finite_psnr = psnr_arr[np.isfinite(psnr_arr)]
+        psnr_std = (
+            float(np.std(psnr_arr))
+            if len(finite_psnr) == len(psnr_arr)
+            else (float(np.std(finite_psnr)) if len(finite_psnr) else 0.0)
+        )
+
         return {
             "num_frames_analyzed": len(psnr_values),
-            "psnr_mean": round(np.mean(psnr_values), 2),
-            "psnr_min": round(np.min(psnr_values), 2),
-            "psnr_max": round(np.max(psnr_values), 2),
-            "psnr_std": round(np.std(psnr_values), 2),
-            "ssim_mean": round(np.mean(ssim_values), 4),
-            "ssim_min": round(np.min(ssim_values), 4),
-            "ssim_max": round(np.max(ssim_values), 4),
-            "ssim_std": round(np.std(ssim_values), 4),
+            "psnr_mean": self._safe_round(float(np.mean(psnr_arr)), 2),
+            "psnr_min": self._safe_round(float(np.min(psnr_arr)), 2),
+            "psnr_max": self._safe_round(float(np.max(psnr_arr)), 2),
+            "psnr_std": self._safe_round(psnr_std, 2),
+            "ssim_mean": self._safe_round(float(np.mean(ssim_arr)), 4),
+            "ssim_min": self._safe_round(float(np.min(ssim_arr)), 4),
+            "ssim_max": self._safe_round(float(np.max(ssim_arr)), 4),
+            "ssim_std": self._safe_round(float(np.std(ssim_arr)), 4),
         }
 
     def _assess_quality(self, ssim_mean: float) -> str:
