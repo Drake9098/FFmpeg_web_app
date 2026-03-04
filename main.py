@@ -26,4 +26,6 @@ else:
     st.info("Carica un video per iniziare")
 
 st.markdown("---")
-st.markdown("FFmpeg Video Converter Web App - Progetto di Quality Development | AA 2025/2026")
+st.markdown(
+    "FFmpeg Video Converter Web App - Progetto di Quality Development | AA 2025/2026"
+)
