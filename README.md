@@ -15,7 +15,10 @@ A Streamlit web app that wraps the FFmpeg Python library, and provides feedback 
 
 ### Usage
 1. Clone the repository: `git clone https://github.com/Drake9098/FFmpeg_web_app.git`
-2. Install dependencies: `pip install -r requirements.txt`
+2. Install dependencies:
+   - Via pyproject.toml (recommended): `pip install .`
+   - With dev/test extras: `pip install .[dev]`
+   - Via requirements.txt: `pip install -r requirements.txt`
 3. Run the app via streamlit: `streamlit run main.py`
 
 ### Video Codecs
