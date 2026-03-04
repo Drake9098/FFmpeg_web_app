@@ -32,6 +32,24 @@ jobs:
       - name: Install Python dependencies
         run: pip install -r requirements.txt
 
+      - name: Install linting tools
+        run: pip install black isort flake8 pylint mypy
+
+      - name: Run isort (import order)
+        run: isort --check-only --diff main.py src/
+
+      - name: Run black (formatting)
+        run: black --check main.py src/
+
+      - name: Run flake8 (style)
+        run: flake8 main.py src/
+
+      - name: Run mypy (type checking)
+        run: mypy
+
+      - name: Run pylint (static analysis)
+        run: pylint main.py src/
+
       - name: Run tests with coverage
         run: |
           pytest tests/ \
