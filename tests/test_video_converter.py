@@ -4,16 +4,16 @@ Uses mocking to avoid requiring real video files or ffmpeg installation.
 """
 
 import sys
+from pathlib import Path
+from unittest.mock import MagicMock, patch
+
 import ffmpeg
 import pytest
-from unittest.mock import MagicMock, patch
-from pathlib import Path
 
 # Add root to path so imports work
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from src.video_converter import VideoConverter
-
 
 # Shared fake data
 
@@ -95,6 +95,8 @@ def mock_subprocess_ok():
         'frame=  60 fps= 30 q=28.0 size=    1024kB time=00:00:02.00 bitrate= 512.0kbits/s speed=1.00x\n',
         '',
     ]
+    mock_process.__enter__.return_value = mock_process
+    mock_process.__exit__.return_value = False
     with patch('subprocess.Popen', return_value=mock_process) as m:
         yield m
 
@@ -216,10 +218,13 @@ class TestConvertVideo:
             mock_process.returncode = returncode
             mock_process.poll.return_value = returncode  # constant – loop exits on first empty read
             mock_process.stderr.readline.side_effect = [
-                'time=00:00:02.00 bitrate= 512.0kbits/s\n',
+                'frame=  60 fps=30 q=28.0 size=1024kB time=00:00:02.00 bitrate= 512.0kbits/s speed=1x\n',
                 '',
             ]
             mock_process.wait.return_value = None
+            # Popen is used as a context manager – __enter__ must return the same mock
+            mock_process.__enter__.return_value = mock_process
+            mock_process.__exit__.return_value = False
 
             with patch('ffmpeg.probe', side_effect=probes), \
                  patch('ffmpeg.input', return_value=MagicMock()), \

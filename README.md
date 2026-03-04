@@ -1,9 +1,8 @@
 # FFmpeg Video Converter WebApp
-![Static Badge](https://img.shields.io/badge/github-repo-blue?logo=github)
 ![Python](https://img.shields.io/badge/Python-3.x-blue.svg)
 ![FFmpeg](https://img.shields.io/badge/FFmpeg-v7.0-blue?logo=ffmpeg&logoColor=white)
 ![StreamLit](https://img.shields.io/badge/-Streamlit-blue?style=flat&logo=streamlit&logoColor=white)
-![Coverage](https://img.shields.io/badge/Coverage-94%25-blue)
+![Coverage](https://img.shields.io/badge/Coverage-73%25-blue)
 
 A Streamlit web app that wraps the FFmpeg Python library, and provides feedback on space saved, and output video quality.
 
@@ -13,6 +12,11 @@ A Streamlit web app that wraps the FFmpeg Python library, and provides feedback 
 - ☑️ Provide options for output settings (resolution, bitrate, codec, CRF, preset)
 - ☑️ Provide feedback of space saved and output video quality (SSIM and PSNR)
 - ☑️ Streamlit GUI
+
+### Usage
+1. Clone the repository: `git clone https://github.com/Drake9098/FFmpeg_web_app.git`
+2. Install dependencies: `pip install -r requirements.txt`
+3. Run the app via streamlit: `streamlit run main.py`
 
 ### Video Codecs
 - `libx264` - H.264 (default, widely compatible)
