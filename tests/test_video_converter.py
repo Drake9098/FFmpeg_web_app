@@ -4,16 +4,16 @@ Uses mocking to avoid requiring real video files or ffmpeg installation.
 """
 
 import sys
+from pathlib import Path
+from unittest.mock import MagicMock, patch
+
 import ffmpeg
 import pytest
-from unittest.mock import MagicMock, patch
-from pathlib import Path
 
 # Add root to path so imports work
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 from src.video_converter import VideoConverter
-
 
 # Shared fake data
 

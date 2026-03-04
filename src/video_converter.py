@@ -3,22 +3,24 @@ Video Converter - Main Module
 Converts videos to different formats using ffmpeg
 """
 
-import json
-import ffmpeg
-import subprocess
-import time
 import os
 import re
+import subprocess
+import time
+from fractions import Fraction
 from pathlib import Path
-from typing import Dict, Optional, Tuple
-import streamlit as st
+from typing import Any, Dict, Optional, Tuple
+
+import ffmpeg
+
 
 class VideoConverter:
     """Main class for video conversion operations"""
+
     def __init__(self, output_dir: str = "output"):
         """
         Initializer
-        
+
         Args:
             output_dir: Directory where converted videos will be saved
         """
@@ -28,118 +30,141 @@ class VideoConverter:
     def get_video_info(self, input_path: str) -> Dict:
         """
         Analyze video properties using ffprobe
-        
+
         Args:
             input_path: Path to input video file
-            
+
         Returns:
             Dictionary containing video information
         """
         try:
             probe = ffmpeg.probe(input_path)
-            video_stream = next((stream for stream in probe['streams'] 
-                               if stream['codec_type'] == 'video'), None)
-            audio_stream = next((stream for stream in probe['streams'] 
-                               if stream['codec_type'] == 'audio'), None)
-            
+            video_stream = next(
+                (s for s in probe["streams"] if s["codec_type"] == "video"),
+                None,
+            )
+            audio_stream = next(
+                (s for s in probe["streams"] if s["codec_type"] == "audio"),
+                None,
+            )
+
             info = {
-                'filename': os.path.basename(input_path),
-                'format': probe['format']['format_name'],
-                'duration': float(probe['format']['duration']),
-                'size_bytes': int(probe['format']['size']),
-                'size_mb': round(int(probe['format']['size']) / (1024 * 1024), 2),
-                'bitrate': int(probe['format']['bit_rate']),
+                "filename": os.path.basename(input_path),
+                "format": probe["format"]["format_name"],
+                "duration": float(probe["format"]["duration"]),
+                "size_bytes": int(probe["format"]["size"]),
+                "size_mb": round(int(probe["format"]["size"]) / (1024 * 1024), 2),
+                "bitrate": int(probe["format"]["bit_rate"]),
             }
-            
+
             if video_stream:
-                info.update({
-                    'video_codec': video_stream['codec_name'],
-                    'width': int(video_stream['width']),
-                    'height': int(video_stream['height']),
-                    'fps': eval(video_stream['r_frame_rate']),
-                    'video_bitrate': int(video_stream.get('bit_rate', 0)) if 'bit_rate' in video_stream else None,
-                })
-            
+                info.update(
+                    {
+                        "video_codec": video_stream["codec_name"],
+                        "width": int(video_stream["width"]),
+                        "height": int(video_stream["height"]),
+                        "fps": float(Fraction(video_stream["r_frame_rate"])),
+                        "video_bitrate": (
+                            int(video_stream.get("bit_rate", 0))
+                            if "bit_rate" in video_stream
+                            else None
+                        ),
+                    }
+                )
+
             if audio_stream:
-                info.update({
-                    'audio_codec': audio_stream['codec_name'],
-                    'audio_bitrate': int(audio_stream.get('bit_rate', 0)) if 'bit_rate' in audio_stream else None,
-                    'sample_rate': int(audio_stream['sample_rate']),
-                })
-            
+                info.update(
+                    {
+                        "audio_codec": audio_stream["codec_name"],
+                        "audio_bitrate": (
+                            int(audio_stream.get("bit_rate", 0))
+                            if "bit_rate" in audio_stream
+                            else None
+                        ),
+                        "sample_rate": int(audio_stream["sample_rate"]),
+                    }
+                )
+
             return info
-            
+
         except ffmpeg.Error as e:
             print(f"Error analyzing video: {e.stderr.decode()}")
             raise
-    
-    def Progress_bar(self, process, duration, progress_bar) -> list:
-            """
-            Read ffmpeg output in real-time to update progress bar
-            
-            Args:
-                process: Subprocess running ffmpeg command
-                duration: Total duration of the video in seconds
-                progress_bar: Streamlit progress bar object to update
-            Returns:
-                List of stderr lines from ffmpeg output
-            """
-            
+
+    def progress_bar(self, process, duration, progress_bar) -> list:
+        """
+        Read ffmpeg output in real-time to update progress bar
+
+        Args:
+            process: Subprocess running ffmpeg command
+            duration: Total duration of the video in seconds
+            progress_bar: Streamlit progress bar object to update
+        Returns:
+            List of stderr lines from ffmpeg output
+        """
         # Read output in real-time to show progress in Streamlit
-            stderr_lines = []
-            while True:
-                output = process.stderr.readline()
-                if output == '' and process.poll() is not None:
-                    break
-                if output:
-                    stderr_lines.append(output)
-                    # Parse progress information from ffmpeg output
-                    time_match = re.search(r'time=(\d+:\d+:\d+\.\d+)', output)
-                    if time_match and progress_bar is not None:
-                        elapsed_time_str = time_match.group(1)
-                        h, m, s = map(float, elapsed_time_str.split(':'))
-                        elapsed_seconds = h * 3600 + m * 60 + s
-                        progress_percent = min(int((elapsed_seconds / duration) * 100), 100)
-                        progress_bar.progress(progress_percent)
-            return stderr_lines
+        stderr_lines = []
+        while True:
+            output = process.stderr.readline()
+            if output == "" and process.poll() is not None:
+                break
+            if output:
+                stderr_lines.append(output)
+                # Parse progress information from ffmpeg output
+                time_match = re.search(r"time=(\d+:\d+:\d+\.\d+)", output)
+                if time_match and progress_bar is not None:
+                    elapsed_time_str = time_match.group(1)
+                    h, m, s = map(float, elapsed_time_str.split(":"))
+                    elapsed_seconds = h * 3600 + m * 60 + s
+                    progress_percent = min(int((elapsed_seconds / duration) * 100), 100)
+                    progress_bar.progress(progress_percent)
+        return stderr_lines
 
     def print_stats(self, stats: Dict):
         """
         Print conversion statistics in a formatted way
-        
+
         Args:
             stats: Dictionary containing conversion statistics
         """
         # Print results to console
         print(f"\n{'='*60}")
-        print(f"Conversion Complete!")
+        print("Conversion Complete!")
         print(f"{'='*60}")
         print(f"Execution time: {stats['execution_time_seconds']} seconds")
         print(f"Original size: {stats['input_size_mb']} MB")
         print(f"New size: {stats['output_size_mb']} MB")
-        print(f"Space saved: {stats['space_saved_mb']} MB ({stats['space_saved_percent']}%)")
+        print(
+            f"Space saved: {stats['space_saved_mb']} MB "
+            f"({stats['space_saved_percent']}%)"
+        )
         print(f"Compression ratio: {stats['compression_ratio']}x")
         print(f"{'='*60}\n")
 
-        if 'ssim_mean' in stats:
-            print(f"SSIM: {stats['ssim_mean']:.4f} (Quality: {stats['quality_assessment']})")
+        if "ssim_mean" in stats:
+            print(
+                f"SSIM: {stats['ssim_mean']:.4f} "
+                f"(Quality: {stats['quality_assessment']})"
+            )
             print(f"PSNR: {stats['psnr_mean']:.2f} dB (Higher is better)")
             print(f"{'='*60}\n")
 
-    def convert_video(self,
-                    input_path: str,
-                    output_format: str = 'mp4',
-                    video_codec: str = 'libx264',
-                    audio_codec: str = 'aac',
-                    crf: int = 23,
-                    preset: str = 'medium',
-                    resolution: Optional[Tuple[int, int]] = None,
-                    video_bitrate: Optional[str] = None,
-                    audio_bitrate: Optional[str] = None,
-                    progress_bar: Optional[st.progress] = None) -> Dict:
+    def convert_video(
+        self,
+        input_path: str,
+        output_format: str = "mp4",
+        video_codec: str = "libx264",
+        audio_codec: str = "aac",
+        crf: int = 23,
+        preset: str = "medium",
+        resolution: Optional[Tuple[int, int]] = None,
+        video_bitrate: Optional[str] = None,
+        audio_bitrate: Optional[str] = None,
+        progress_bar: Optional[Any] = None,
+    ) -> Dict:
         """
         Convert video to specified format and settings
-        
+
         Args:
             input_path: Path to input video file
             output_format: Output format (mp4, avi, mkv, etc.)
@@ -156,105 +181,112 @@ class VideoConverter:
         """
         # Get input video info
         input_info = self.get_video_info(input_path)
-        
+
         # Generate output filename
         input_name = Path(input_path).stem
         output_path = self.output_dir / f"{input_name}_converted.{output_format}"
-        
+
         print(f"\n{'='*60}")
         print(f"Converting: {input_info['filename']}")
-        print(f"Original: {input_info['width']}x{input_info['height']}, "
-              f"{input_info['size_mb']} MB, {input_info['video_codec']}")
+        print(
+            f"Original: {input_info['width']}x{input_info['height']}, "
+            f"{input_info['size_mb']} MB, {input_info['video_codec']}"
+        )
         print(f"{'='*60}\n")
-        
+
         # Build ffmpeg command
         input_stream = ffmpeg.input(input_path)
         video_stream = input_stream.video
-        
+
         # Video encoding options
-        video_options = {
-            'c:v': video_codec,
-            'preset': preset,
+        video_options: Dict[str, Any] = {
+            "c:v": video_codec,
+            "preset": preset,
         }
-        
+
         if crf is not None and video_bitrate is None:
-            video_options['crf'] = crf
-        
+            video_options["crf"] = crf
+
         if video_bitrate:
-            video_options['b:v'] = video_bitrate
-        
+            video_options["b:v"] = video_bitrate
+
         # Audio encoding options
         audio_options = {
-            'c:a': audio_codec,
+            "c:a": audio_codec,
         }
-        
+
         if audio_bitrate:
-            audio_options['b:a'] = audio_bitrate
-        
+            audio_options["b:a"] = audio_bitrate
+
         # Apply resolution scaling if specified
         if resolution:
-            video_stream = ffmpeg.filter(video_stream, 'scale', resolution[0], resolution[1])
-        
+            video_stream = ffmpeg.filter(
+                video_stream, "scale", resolution[0], resolution[1]
+            )
+
         # Prepare output streams
         output_streams = [video_stream]
-        if 'audio_codec' in input_info:
+        if "audio_codec" in input_info:
             output_streams.append(input_stream.audio)
-        
+
         # Combine options
         output_options = {**video_options, **audio_options}
-        
+
         # Start conversion
         start_time = time.time()
-        
+
         try:
             stream = ffmpeg.output(*output_streams, str(output_path), **output_options)
             cmd = ffmpeg.compile(stream, overwrite_output=True)
-            
-            duration = input_info['duration']
-            process = subprocess.Popen(
+
+            duration = input_info["duration"]
+            with subprocess.Popen(
                 cmd,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
-                universal_newlines=True
-            )
-            
-            stderr_lines = self.Progress_bar(process, duration, progress_bar)
+                universal_newlines=True,
+            ) as process:
+                stderr_lines = self.progress_bar(process, duration, progress_bar)
+                process.wait()
+                if process.returncode != 0:
+                    error_output = "".join(stderr_lines[-20:])
+                    raise RuntimeError(
+                        f"FFmpeg conversion failed "
+                        f"(exit code {process.returncode}):\n{error_output}"
+                    )
 
-            process.wait()
-            if process.returncode != 0:
-                error_output = ''.join(stderr_lines[-20:])  # last 20 lines of FFmpeg output
-                raise Exception(f"FFmpeg conversion failed (exit code {process.returncode}):\n{error_output}")
-                        
             end_time = time.time()
             execution_time = end_time - start_time
-            
+
             # Get output video info
             output_info = self.get_video_info(str(output_path))
-            
+
             # Calculate statistics
-            space_saved_mb = input_info['size_mb'] - output_info['size_mb']
-            space_saved_percent = (space_saved_mb / input_info['size_mb']) * 100
-            compression_ratio = input_info['size_mb'] / output_info['size_mb']
-            
+            space_saved_mb = input_info["size_mb"] - output_info["size_mb"]
+            space_saved_percent = (space_saved_mb / input_info["size_mb"]) * 100
+            compression_ratio = input_info["size_mb"] / output_info["size_mb"]
+
             stats = {
-                'input_file': input_info['filename'],
-                'output_file': output_path.name,
-                'input_size_mb': input_info['size_mb'],
-                'output_size_mb': output_info['size_mb'],
-                'space_saved_mb': round(space_saved_mb, 2),
-                'space_saved_percent': round(space_saved_percent, 2),
-                'compression_ratio': round(compression_ratio, 2),
-                'execution_time_seconds': round(execution_time, 2),
-                'input_resolution': f"{input_info['width']}x{input_info['height']}",
-                'output_resolution': f"{output_info['width']}x{output_info['height']}",
-                'input_codec': input_info['video_codec'],
-                'output_codec': output_info['video_codec'],
+                "input_file": input_info["filename"],
+                "output_file": output_path.name,
+                "input_size_mb": input_info["size_mb"],
+                "output_size_mb": output_info["size_mb"],
+                "space_saved_mb": round(space_saved_mb, 2),
+                "space_saved_percent": round(space_saved_percent, 2),
+                "compression_ratio": round(compression_ratio, 2),
+                "execution_time_seconds": round(execution_time, 2),
+                "input_resolution": (f"{input_info['width']}x{input_info['height']}"),
+                "output_resolution": (
+                    f"{output_info['width']}x{output_info['height']}"
+                ),
+                "input_codec": input_info["video_codec"],
+                "output_codec": output_info["video_codec"],
             }
-            
+
             self.print_stats(stats)
-            
+
             return stats
-            
+
         except ffmpeg.Error as e:
             print(f"Error during conversion: {e.stderr.decode()}")
             raise
