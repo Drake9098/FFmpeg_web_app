@@ -1,14 +1,10 @@
 import streamlit as st
 
-from src.utils import (
-    page_config,
-    run_conversion,
-    save_uploaded_file,
-    show_conversion_settings,
-    show_quality_options,
-    show_results,
-    show_video_info,
-)
+from src.processing.conversion import run_conversion
+from src.processing.file_handler import save_uploaded_file, show_video_info
+from src.ui.config import page_config
+from src.ui.results import show_results
+from src.ui.settings import show_conversion_settings, show_quality_options
 from src.video_converter import VideoConverter
 
 page_config()
