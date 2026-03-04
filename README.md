@@ -14,6 +14,11 @@ A Streamlit web app that wraps the FFmpeg Python library, and provides feedback 
 - ☑️ Provide feedback of space saved and output video quality (SSIM and PSNR)
 - ☑️ Streamlit GUI
 
+### Usage
+1. Clone the repository: `git clone https://github.com/Drake9098/FFmpeg_web_app.git`
+2. Install dependencies: `pip install -r requirements.txt`
+3. Run the app via streamlit: `streamlit run main.py`
+
 ### Video Codecs
 - `libx264` - H.264 (default, widely compatible)
 - `libx265` - H.265/HEVC (better compression, slower)

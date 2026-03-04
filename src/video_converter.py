@@ -72,18 +72,71 @@ class VideoConverter:
         except ffmpeg.Error as e:
             print(f"Error analyzing video: {e.stderr.decode()}")
             raise
+    
+    def Progress_bar(self, process, duration, progress_bar) -> list:
+            """
+            Read ffmpeg output in real-time to update progress bar
+            
+            Args:
+                process: Subprocess running ffmpeg command
+                duration: Total duration of the video in seconds
+                progress_bar: Streamlit progress bar object to update
+            Returns:
+                List of stderr lines from ffmpeg output
+            """
+            
+        # Read output in real-time to show progress in Streamlit
+            stderr_lines = []
+            while True:
+                output = process.stderr.readline()
+                if output == '' and process.poll() is not None:
+                    break
+                if output:
+                    stderr_lines.append(output)
+                    # Parse progress information from ffmpeg output
+                    time_match = re.search(r'time=(\d+:\d+:\d+\.\d+)', output)
+                    if time_match and progress_bar is not None:
+                        elapsed_time_str = time_match.group(1)
+                        h, m, s = map(float, elapsed_time_str.split(':'))
+                        elapsed_seconds = h * 3600 + m * 60 + s
+                        progress_percent = min(int((elapsed_seconds / duration) * 100), 100)
+                        progress_bar.progress(progress_percent)
+            return stderr_lines
+
+    def print_stats(self, stats: Dict):
+        """
+        Print conversion statistics in a formatted way
+        
+        Args:
+            stats: Dictionary containing conversion statistics
+        """
+        # Print results to console
+        print(f"\n{'='*60}")
+        print(f"Conversion Complete!")
+        print(f"{'='*60}")
+        print(f"Execution time: {stats['execution_time_seconds']} seconds")
+        print(f"Original size: {stats['input_size_mb']} MB")
+        print(f"New size: {stats['output_size_mb']} MB")
+        print(f"Space saved: {stats['space_saved_mb']} MB ({stats['space_saved_percent']}%)")
+        print(f"Compression ratio: {stats['compression_ratio']}x")
+        print(f"{'='*60}\n")
+
+        if 'ssim_mean' in stats:
+            print(f"SSIM: {stats['ssim_mean']:.4f} (Quality: {stats['quality_assessment']})")
+            print(f"PSNR: {stats['psnr_mean']:.2f} dB (Higher is better)")
+            print(f"{'='*60}\n")
 
     def convert_video(self,
-                     input_path: str,
-                     output_format: str = 'mp4',
-                     video_codec: str = 'libx264',
-                     audio_codec: str = 'aac',
-                     crf: int = 23,
-                     preset: str = 'medium',
-                     resolution: Optional[Tuple[int, int]] = None,
-                     video_bitrate: Optional[str] = None,
-                     audio_bitrate: Optional[str] = None,
-                     progress_bar: Optional[st.progress] = None) -> Dict:
+                    input_path: str,
+                    output_format: str = 'mp4',
+                    video_codec: str = 'libx264',
+                    audio_codec: str = 'aac',
+                    crf: int = 23,
+                    preset: str = 'medium',
+                    resolution: Optional[Tuple[int, int]] = None,
+                    video_bitrate: Optional[str] = None,
+                    audio_bitrate: Optional[str] = None,
+                    progress_bar: Optional[st.progress] = None) -> Dict:
         """
         Convert video to specified format and settings
         
@@ -97,7 +150,7 @@ class VideoConverter:
             resolution: Output resolution as (width, height) tuple
             video_bitrate: Target video bitrate (e.g., '1M', '2000k')
             audio_bitrate: Target audio bitrate (e.g., '128k', '192k')
-            
+            progress_bar: Streamlit progress bar object for showing conversion progress
         Returns:
             Dictionary containing conversion statistics
         """
@@ -157,7 +210,6 @@ class VideoConverter:
             stream = ffmpeg.output(*output_streams, str(output_path), **output_options)
             cmd = ffmpeg.compile(stream, overwrite_output=True)
             
-            
             duration = input_info['duration']
             process = subprocess.Popen(
                 cmd,
@@ -166,22 +218,7 @@ class VideoConverter:
                 universal_newlines=True
             )
             
-            # Read output in real-time to show progress in Streamlit
-            stderr_lines = []
-            while True:
-                output = process.stderr.readline()
-                if output == '' and process.poll() is not None:
-                    break
-                if output:
-                    stderr_lines.append(output)
-                    # Parse progress information from ffmpeg output
-                    time_match = re.search(r'time=(\d+:\d+:\d+\.\d+)', output)
-                    if time_match and progress_bar is not None:
-                        elapsed_time_str = time_match.group(1)
-                        h, m, s = map(float, elapsed_time_str.split(':'))
-                        elapsed_seconds = h * 3600 + m * 60 + s
-                        progress_percent = min(int((elapsed_seconds / duration) * 100), 100)
-                        progress_bar.progress(progress_percent)
+            stderr_lines = self.Progress_bar(process, duration, progress_bar)
 
             process.wait()
             if process.returncode != 0:
@@ -214,22 +251,7 @@ class VideoConverter:
                 'output_codec': output_info['video_codec'],
             }
             
-            # Print results to console
-            print(f"\n{'='*60}")
-            print(f"Conversion Complete!")
-            print(f"{'='*60}")
-            print(f"Output file: {output_path.name}")
-            print(f"Execution time: {stats['execution_time_seconds']} seconds")
-            print(f"Original size: {stats['input_size_mb']} MB")
-            print(f"New size: {stats['output_size_mb']} MB")
-            print(f"Space saved: {stats['space_saved_mb']} MB ({stats['space_saved_percent']}%)")
-            print(f"Compression ratio: {stats['compression_ratio']}x")
-            print(f"{'='*60}\n")
-
-            if 'ssim_mean' in stats:
-                print(f"SSIM: {stats['ssim_mean']:.4f} (Quality: {stats['quality_assessment']})")
-                print(f"PSNR: {stats['psnr_mean']:.2f} dB (Higher is better)")
-                print(f"{'='*60}\n")
+            self.print_stats(stats)
             
             return stats
             
