@@ -40,3 +40,6 @@ disable = [
     "R0913",  # too-many-arguments
     "R0917",  # too-many-positional-arguments
 ]
+
+[tool.coverage.run]
+omit = ["src/ui/*"]
