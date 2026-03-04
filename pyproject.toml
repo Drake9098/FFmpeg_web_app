@@ -1,14 +1,35 @@
 [tool.black]
 line-length = 88
+target-version = ["py310"]
 include = '\.pyi?$'
-extend-exclude = '/(\.git|\.venv|build|dist)/'
+extend-exclude = '/(\.git|\.venv|build|dist|tests)/'
 
 [tool.isort]
 profile = "black"
-src_paths = ["src", "."]
+src_paths = ["src"]
+known_first_party = ["src"]
+skip_glob = ["tests/*", ".venv/*"]
 
 [tool.mypy]
 python_version = "3.10"
 warn_return_any = true
 warn_unused_configs = true
-files = ["src", "main.py"]
+ignore_missing_imports = true
+files = ["main.py", "src"]
+exclude = ["tests", "\.venv"]
+
+[tool.pylint.main]
+python-version = "3.10"
+source-roots = ["src"]
+ignore = ["tests", ".venv"]
+
+[tool.pylint.format]
+max-line-length = 88
+
+[tool.pylint."messages control"]
+disable = [
+    "C0114",  # missing-module-docstring
+    "C0115",  # missing-class-docstring
+    "C0116",  # missing-function-docstring
+    "R0903",  # too-few-public-methods
+]
