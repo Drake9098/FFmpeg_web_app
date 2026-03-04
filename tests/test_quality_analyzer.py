@@ -5,15 +5,15 @@ extract_frames and compare_videos mock cv2.VideoCapture / instance methods.
 """
 
 import sys
-import pytest
-import numpy as np
-from unittest.mock import MagicMock, patch
 from pathlib import Path
+from unittest.mock import MagicMock, patch
+
+import numpy as np
+import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from src.quality_analyzer import VideoQualityAnalyzer
-
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
 

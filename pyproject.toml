@@ -16,12 +16,15 @@ warn_return_any = true
 warn_unused_configs = true
 ignore_missing_imports = true
 files = ["main.py", "src"]
-exclude = ["tests", "\.venv"]
+exclude = ["tests", "\\.venv"]
 
 [tool.pylint.main]
-python-version = "3.10"
-source-roots = ["src"]
+py-version = "3.10"
+source-roots = ["."]
 ignore = ["tests", ".venv"]
+
+[tool.pylint.typecheck]
+ignored-modules = ["cv2", "skimage", "skimage.metrics"]
 
 [tool.pylint.format]
 max-line-length = 88
@@ -32,4 +35,8 @@ disable = [
     "C0115",  # missing-class-docstring
     "C0116",  # missing-function-docstring
     "R0903",  # too-few-public-methods
+    "W0718",  # broad-exception-caught (acceptable in UI handlers)
+    "R0914",  # too-many-locals
+    "R0913",  # too-many-arguments
+    "R0917",  # too-many-positional-arguments
 ]
