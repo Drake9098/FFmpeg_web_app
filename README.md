@@ -1,5 +1,4 @@
 # FFmpeg Video Converter WebApp
-![Static Badge](https://img.shields.io/badge/github-repo-blue?logo=github)
 ![Python](https://img.shields.io/badge/Python-3.x-blue.svg)
 ![FFmpeg](https://img.shields.io/badge/FFmpeg-v7.0-blue?logo=ffmpeg&logoColor=white)
 ![StreamLit](https://img.shields.io/badge/-Streamlit-blue?style=flat&logo=streamlit&logoColor=white)
